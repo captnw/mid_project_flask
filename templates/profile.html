@@ -1,0 +1,16 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Profile</title>
+</head>
+<body>
+    <h1>{{ data.user }}'s profile</h1>
+    <p>User has visited profile {{ data.time }} times!</p>
+    <h1>Book repository</h1>
+    <p>There are {{ data.number_of_books }} total books in the repository</p>
+    {% for book in data.books %}
+    <p>ID: {{ book.ID }} | Title: {{ book.Title }} | Author: {{ book.Author }}</p>
+    {% endfor %}
+</body>
+</html>

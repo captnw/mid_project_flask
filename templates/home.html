@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Home</title>
+</head>
+<body>
+    <h1>Book repository</h1>
+    <p>There are {{ number_of_books }} public books in the repository</p>
+    {% for book in books %}
+    <p>ID: {{ book.ID }} | Title: {{ book.Title }} | Author: {{ book.Author }}</p>
+    {% endfor %}
+    <a href="/login">Login to see all books!</a>
+</body>
+</html>
