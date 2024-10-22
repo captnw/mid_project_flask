@@ -1,7 +1,7 @@
 # mid_project_flask
 Building a RESTful API with Flask
 
-By William N, X, and X
+By William N, Randell Lapid, and X
 
 This is a library application where user can upload short books (in the form of .txt files). Books can only be 1MB.
 If you're not signed in, you can see all of the metadata of the public books, and if you're signed in, you can see the private books as well.
