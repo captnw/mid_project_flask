@@ -127,7 +127,7 @@ def test_select():
 # CRUD
 # TODO: enforce JWT authentication, don't let random people update database
 # maybe add error handling (try except...) and throw internal server error if database operation fails
-@app.route('/book', methods=['POST', 'GET'])
+@app.route('/books', methods=['POST', 'GET'])
 def books():
     # handle book database CRUD operations
     cur = mysql.connection.cursor()
@@ -148,12 +148,20 @@ def books():
 
         return 'Done!', 200
     elif request.method == 'GET':
-        # Get all of the books
-        cur.execute('SELECT * FROM book')
+        # Get all of the public* books
+        cur.execute('SELECT * FROM book WHERE MembersOnly=false')
         results = cur.fetchall()
         cur.close()
         return jsonify(results), 200
     
+        # Get all of the books only if you're authenticated
+        # Add condition here...
+
+        # cur.execute('SELECT * FROM book')
+        # results = cur.fetchall()
+        # cur.close()
+        # return jsonify(results), 200
+
     cur.close() # Invalid method type, close cursor before aborting
     abort(400)
 
