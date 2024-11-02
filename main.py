@@ -1,11 +1,13 @@
 from typing import Tuple
 from flask import Flask, jsonify, request, render_template, make_response, session, abort
 from flask_mysqldb import MySQL
+from functools import wraps
+import jwt
 
 app = Flask(__name__)
 
 USERID = 'userID'
-app.secret_key='Mid_Project'
+app.config['SECRET_KEY']='Mid_Project'
 
 app.config['MYSQL_USER'] = 'root'
 app.config['MYSQL_PASSWORD'] = 'Password1'
@@ -39,7 +41,26 @@ def MySQL_Insert(query : str) -> None:
         abort(500, str(e))
     finally:
         cur.close()
-    
+
+# Token verification for JWT Auth Login
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.args.get('token')
+        if not token:
+            return jsonify({'message': 'Token is missing!'}), 401
+        try:
+            # Decode the token
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=["HS256"])
+            current_user = data['username']
+        except jwt.ExpiredSignatureError:
+            return jsonify({'message': 'Token has expired!'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'message': 'Invalid token!'}), 401
+        # Pass the current user to the route
+        return f(current_user, *args, **kwargs)
+    return decorated
+
 # Main functionality
 
 @app.route('/')
@@ -63,31 +84,19 @@ def home():
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    username = request.cookies.get(USERID)
-    if username:
-        # If cookie exists, then we auto redirec to profile
-        return app.redirect('/profile')
-    else:
-        THIRTY_MINUTES_IN_SECONDS = 1800
-        if request.method == 'POST':
-            # then we handle cookie generation; if form is non empty, then we create cookie with that username
-            username_from_form = request.form.get('username')
-            if username_from_form:
-                resp = app.redirect('/profile')
-                resp.set_cookie(USERID, username_from_form, max_age=THIRTY_MINUTES_IN_SECONDS)
-                session[username_from_form] = session.get(username_from_form, 0) # default value is 0, it will be autoincremented if have valid cookies on profile view
-            else:
-                resp = make_response('Cookie is not created; username is empty')
-            return resp
-        else:
-            return render_template('login_form.html')
-        
+    # JWT Authentication
+    if request.method == 'POST':
+        auth = request.get_json()
+        if auth:
+            # Generate token
+            token = jwt.encode({'username': auth['username']}, app.config['SECRET_KEY'])
+            return jsonify({'token': token})
+        else:jsonify({'message': 'Invalid credentials!'}), 401
+    return render_template('login_form.html')
+
 @app.route('/profile')
+@token_required # Authorization is required to enter this page
 def profile():
-    username = request.cookies.get(USERID)
-    if not username:
-        return app.redirect('/login')
-    session[username] = session.get(username, 0) + 1
 
     # Get all of the private books in order to display them
     all_results = MySQL_Select('SELECT * FROM mid_project.book')
