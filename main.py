@@ -46,7 +46,11 @@ def MySQL_Insert(query : str) -> None:
 def token_required(f):
     @wraps(f)
     def decorated(*args, **kwargs):
-        token = request.args.get('token')
+        # You have the JWT token; but you cannot access a page or something?
+        # Simply add: ?Authorization={TOKEN} in the URL
+        # Or add a bearer auth token
+        AUTHORIZATION = 'Authorization'
+        token = request.headers.get(AUTHORIZATION) or request.args.get(AUTHORIZATION)
         if not token:
             return jsonify({'message': 'Token is missing!'}), 401
         try:
@@ -84,19 +88,30 @@ def home():
 
 @app.route('/login', methods=['POST', 'GET'])
 def login():
-    # JWT Authentication
+    # The creation and management of users is outside of this project's scope
+    # I'm making the decision to hardcode the credentials so we simply validate the credentials
+    # are as follows: Username: admin; Password: password
+    # as always this can be expanded upon; but this is "good enough" for now
+    HARDCODED_USER = "admin"
+    HARDCODED_PASSWORD = "password"
+
     if request.method == 'POST':
-        auth = request.get_json()
-        if auth:
+        username_from_form = request.form.get('username')
+        password_from_form = request.form.get('password')
+        if username_from_form == HARDCODED_USER and password_from_form == HARDCODED_PASSWORD:
             # Generate token
-            token = jwt.encode({'username': auth['username']}, app.config['SECRET_KEY'])
+            token = jwt.encode({'username': username_from_form}, app.config['SECRET_KEY'])
+
+            # Generate the session cookie for number of visits (unrelated to jwt token)
+            session[username_from_form] = session.get(username_from_form, 0) # default value is 0, it will be autoincremented if have valid cookies on profile view
             return jsonify({'token': token})
-        else:jsonify({'message': 'Invalid credentials!'}), 401
+        else:
+            return jsonify({'message': 'Invalid credentials! This is not the hardcoded user'}), 401
     return render_template('login_form.html')
 
 @app.route('/profile')
 @token_required # Authorization is required to enter this page
-def profile():
+def profile(current_user):
 
     # Get all of the private books in order to display them
     all_results = MySQL_Select('SELECT * FROM mid_project.book')
@@ -111,16 +126,16 @@ def profile():
         # last result, result[3] is whether it should be publically displayed or not, we don't need to display it
         book_results.append(book_info)
 
-    return render_template('profile.html', data={"user":username,"time":session[username],"books":book_results,"number_of_books":len(all_results)})
+    session[current_user] = session.get(current_user,0) + 1 # keep track of the number of times visited the profile
+    return render_template('profile.html', data={"user":current_user,"time": session[current_user],"books":book_results,"number_of_books":len(all_results)})
 
 @app.route('/logout')
-def logout():
-    username = request.cookies.get(USERID)
+@token_required # Authorization is required to enter this page
+def logout(current_user):
     return_to_login = app.redirect('/login')
-    if not username:
+    if not current_user:
         return return_to_login
-    return_to_login.delete_cookie(USERID)
-    session.pop(username)
+    session.pop(current_user)
     return return_to_login
 
 @app.route('/test_select')
@@ -134,10 +149,21 @@ def test_select():
     return jsonify(results), 200
 
 # CRUD
-# TODO: enforce JWT authentication, don't let random people update database
-# maybe add error handling (try except...) and throw internal server error if database operation fails
+@app.route('/publicbooks', methods=['GET'])
+def public_books():
+    if request.method == 'GET':
+        # Get all of the public* books
+        cur = mysql.connection.cursor()
+        cur.execute('SELECT * FROM book WHERE MembersOnly=false')
+        results = cur.fetchall()
+        cur.close()
+        return jsonify(results), 200
+    cur.close() # Invalid method type, close cursor before aborting
+    abort(400)
+
 @app.route('/books', methods=['POST', 'GET'])
-def books():
+@token_required # Authorization is required to enter this page
+def books(current_user):
     # handle book database CRUD operations
     cur = mysql.connection.cursor()
     if request.method == 'POST':
@@ -158,24 +184,17 @@ def books():
         return 'Done!', 200
     elif request.method == 'GET':
         # Get all of the public* books
-        cur.execute('SELECT * FROM book WHERE MembersOnly=false')
+        cur.execute('SELECT * FROM book')
         results = cur.fetchall()
         cur.close()
         return jsonify(results), 200
-    
-        # Get all of the books only if you're authenticated
-        # Add condition here...
-
-        # cur.execute('SELECT * FROM book')
-        # results = cur.fetchall()
-        # cur.close()
-        # return jsonify(results), 200
 
     cur.close() # Invalid method type, close cursor before aborting
     abort(400)
 
 @app.route('/book/<id>', methods=['GET', 'PUT', 'DELETE'])
-def book(id):
+@token_required # Authorization is required to enter this page
+def book(current_user):
     # handle book database CRUD operations
     cur = mysql.connection.cursor()
     if request.method == 'GET':
@@ -184,6 +203,12 @@ def book(id):
         pass
     elif request.method == 'DELETE':
         pass
+
+@app.route('/upload', methods=['POST'])
+@token_required # Authorization is required to enter this page
+def upload_file(current_user):
+    # handle file upload stuff here
+    pass
 
 # Error handlers
 @app.errorhandler(400)
