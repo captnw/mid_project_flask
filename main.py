@@ -30,8 +30,8 @@ def MySQL_Select(query : str) -> Tuple[Tuple[str]]:
         cur.close()
     return public_results
 
-def MySQL_Insert(query : str) -> None:
-    # Basically if everyone works just insert
+def MySQL_RunQuery(query : str) -> None:
+    # Basically if everyone works just perform the query
     # Otherwise abort with a descriptive message
     cur = mysql.connection.cursor()
     try:
@@ -141,31 +141,23 @@ def logout(current_user):
 @app.route('/test_select')
 def test_select():
     # use for debugging
-    cur = mysql.connection.cursor()
-    cur.execute('SELECT * FROM book')
-    results = cur.fetchall()
+    results = MySQL_Select('SELECT * FROM book')
     print(results)
-    cur.close()
     return jsonify(results), 200
 
 # CRUD
 @app.route('/publicbooks', methods=['GET'])
 def public_books():
     if request.method == 'GET':
-        # Get all of the public* books
-        cur = mysql.connection.cursor()
-        cur.execute('SELECT * FROM book WHERE MembersOnly=false')
-        results = cur.fetchall()
-        cur.close()
+        # Get all of the public books
+        results = MySQL_Select('SELECT * FROM book WHERE MembersOnly=false')
         return jsonify(results), 200
-    cur.close() # Invalid method type, close cursor before aborting
     abort(400)
 
 @app.route('/books', methods=['POST', 'GET'])
 @token_required # Authorization is required to enter this page
 def books(current_user):
     # handle book database CRUD operations
-    cur = mysql.connection.cursor()
     if request.method == 'POST':
         # Create a book from form data
         ID = request.form.get("ID")
@@ -179,28 +171,49 @@ def books(current_user):
 
         MembersOnly = bool(MembersOnly)
 
-        MySQL_Insert("INSERT INTO mid_project.book Values({0},'{1}','{2}',{3})".format(ID, Title, Author, MembersOnly))
+        MySQL_RunQuery("INSERT INTO mid_project.book Values({0},'{1}','{2}',{3})".format(ID, Title, Author, MembersOnly))
 
-        return 'Done!', 200
+        return "Successfully inserted new book with data: ID {0}, Title '{1}', Author '{2}', MembersOnly{3}".format(ID, Title, Author, MembersOnly), 200
     elif request.method == 'GET':
-        # Get all of the public* books
-        cur.execute('SELECT * FROM book')
-        results = cur.fetchall()
-        cur.close()
+        # Get all books
+        results = MySQL_Select('SELECT * FROM book')
         return jsonify(results), 200
-
-    cur.close() # Invalid method type, close cursor before aborting
     abort(400)
 
 @app.route('/book/<id>', methods=['GET', 'PUT', 'DELETE'])
 @token_required # Authorization is required to enter this page
-def book(current_user):
+def book(current_user, id):
     # handle book database CRUD operations
-    cur = mysql.connection.cursor()
     if request.method == 'GET':
-        pass
+        result = MySQL_Select('SELECT * FROM book WHERE ID = {0}'.format(id))
+        return jsonify(result), 200
     elif request.method == 'PUT':
-        pass
+        # First we get the existing data
+        result = MySQL_Select('SELECT * FROM book WHERE ID = {0}'.format(id))
+
+        # unpack and store into variables
+        originalTitle = result[0][1]
+        originalAuthor = result[0][2]
+        originalMembersOnly = result[0][3]
+
+        # Then we check to see if there is appropriate form data
+        Title = request.form.get("Title")
+        Author = request.form.get("Author")
+        MembersOnly = request.form.get("MembersOnly")
+
+        # Edge case, if there is no form data; then just throw bad request, there needs to be a reason to change this data
+        if not any((Title,Author,MembersOnly)):
+            abort(400)
+
+        # Take from original data if there is no form data
+        Title = Title or originalTitle
+        Author = Author or originalAuthor
+        MembersOnly = bool(MembersOnly if not MembersOnly is None else originalMembersOnly)
+
+        # Finally do update
+        MySQL_RunQuery("UPDATE book SET Title='{0}',Author='{1}',MembersOnly={2} WHERE ID={3}".format(Title,Author,MembersOnly,id))
+
+        return "Successfully updated book with data: ID: {0}, Title '{1}', Author '{2}', MembersOnly {3}".format(id, Title, Author, MembersOnly), 200
     elif request.method == 'DELETE':
         pass
 
