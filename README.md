@@ -34,3 +34,34 @@ You'll probably need to configure the following values dependong on how you conf
 - MYSQL_USER
 - MYSQL_PASSWORD
 - MYSQL_HOST
+
+Then simply run py main.py
+
+# Endpoints
+- /
+  - Home
+  - Displays all public book
+  - No JWT token required
+- {GET / POST} /login
+  - No JWT token required
+- /profile
+  - Displays number of times page is visited, and displays all books
+  - Need to access with JWT token (bearer token or URL argument)
+- /logout
+  - Logs you out
+  - Need to access with JWT token (bearer token or URL argument)
+- {GET} /public_books
+  - Retrieves a list of public books
+- {GET / POST} /books
+  - Gets a list of all books, or append a single book
+  - Need to access with JWT token (bearer token or URL argument)
+- {GET / PUT / DELETE} /book
+  - Get a single book, update a single book, or delete a single book
+  - Need to access with JWT token (bearer token or URL argument)
+- /upload
+  - A form allowing you to upload a file
+  - Need to access with JWT token (bearer token or URL argument)
+- {POST} /sendFile
+  - Endpoint allowing one to upload a .txt file that doesn't exceed 1 MB
+  - This file will be saved in the uploads folder
+  - Need to access with JWT token (bearer token or URL argument)

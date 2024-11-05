@@ -144,12 +144,12 @@ def logout(current_user):
     session.pop(current_user)
     return return_to_login
 
-@app.route('/test_select')
-def test_select():
-    # use for debugging
-    results = MySQL_Select('SELECT * FROM book')
-    print(results)
-    return jsonify(results), 200
+# @app.route('/test_select')
+# def test_select():
+#     # use for debugging
+#     results = MySQL_Select('SELECT * FROM book')
+#     print(results)
+#     return jsonify(results), 200
 
 # CRUD
 @app.route('/publicbooks', methods=['GET'])
@@ -223,17 +223,12 @@ def book(current_user, id):
     elif request.method == 'DELETE':
         pass
 
-@app.route('/upload')#, methods=['POST'])
+@app.route('/upload')
 @token_required # Authorization is required to enter this page
 def upload_file(current_user):
-    # handle file upload stuff here
-    token = request.headers.get('Authorization')
-
     return render_template('upload.html')
 
-
 @app.route('/sendFile',methods=['POST'])
-
 def sendFile():
     uploaded_file = request.files['file']
  
