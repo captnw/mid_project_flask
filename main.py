@@ -221,7 +221,9 @@ def book(current_user, id):
 
         return "Successfully updated book with data: ID: {0}, Title '{1}', Author '{2}', MembersOnly {3}".format(id, Title, Author, MembersOnly), 200
     elif request.method == 'DELETE':
-        pass
+        MySQL_RunQuery('DELETE FROM book WHERE ID = {0}'.format(id))
+
+        return "Successfully deleted book with ID: {0}".format(id), 200
 
 @app.route('/upload')
 @token_required # Authorization is required to enter this page
