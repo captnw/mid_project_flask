@@ -2,9 +2,15 @@ from typing import Tuple
 from flask import Flask, jsonify, request, render_template, make_response, session, abort
 from flask_mysqldb import MySQL
 from functools import wraps
+from werkzeug.utils import secure_filename
+import os
 import jwt
 
 app = Flask(__name__)
+
+app.config['MAX_CONTENT_LENGTH'] = 1024 * 1024
+app.config['UPLOAD_EXTENSIONS'] = ['.txt']
+app.config['UPLOAD_PATH'] = 'uploads/'
 
 USERID = 'userID'
 app.config['SECRET_KEY']='Mid_Project'
@@ -204,11 +210,27 @@ def book(current_user):
     elif request.method == 'DELETE':
         pass
 
-@app.route('/upload', methods=['POST'])
+@app.route('/upload')#, methods=['POST'])
 @token_required # Authorization is required to enter this page
 def upload_file(current_user):
     # handle file upload stuff here
-    pass
+    token = request.headers.get('Authorization')
+
+    return render_template('upload.html')
+
+
+@app.route('/sendFile',methods=['POST'])
+
+def sendFile():
+    uploaded_file = request.files['file']
+ 
+    if uploaded_file.filename != '':
+        filename = secure_filename(uploaded_file.filename)
+    if os.path.splitext(filename)[1] in app.config['UPLOAD_EXTENSIONS']:
+        uploaded_file.save(os.path.join(app.config['UPLOAD_PATH'],filename))
+        return 'uploaded'
+    abort(400)
+
 
 # Error handlers
 @app.errorhandler(400)
